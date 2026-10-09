@@ -1,108 +1,167 @@
 import streamlit as st
 
-st.set_page_config(page_title="SE Diagnóstico de Cefaleas", page_icon="🩺", layout="centered")
+# Configuración inicial del entorno
+st.set_page_config(
+    page_title="SE Infectología: Fiebre y Cefalea", 
+    page_icon="🩺", 
+    layout="wide"
+)
 
-st.title("🩺 Sistema Experto de Triaje: Diagnóstico de Cefaleas")
-st.write("Especialidad: **Neurología / Triaje Médico Rápido**")
+# Encabezado con la delimitación de la especialidad
+st.title("🩺 Sistema Experto de Triaje e Infecciones Agudas")
+st.markdown("**Especialidad Delimitada:** Infectología y Medicina Tropical")
+st.caption("Evaluación clínica rápida de Síndrome Febril Agudo y Cefaleas Infecciosas mediante motor de inferencia.")
 st.markdown("---")
 
-st.sidebar.header("📋 Datos del Paciente")
-edad = st.sidebar.number_input("Edad del paciente", min_value=1, max_value=110, value=30)
-genero = st.sidebar.selectbox("Género", ["Femenino", "Masculino", "Otro"])
-duracion = st.sidebar.selectbox("Duración habitual del episodio:", [
-    "Menos de 3 horas",
-    "Entre 4 y 72 horas",
-    "Varios días continuos"
-])
+col_entradas, col_salidas = st.columns([1, 1], gap="large")
 
-st.header("🔍 Evaluación de Síntomas y Signos Clínicos")
+with col_entradas:
+    st.header("📋 Entrada de Datos y Síntomas Clínicos")
+    
+    with st.expander("👤 1. Parámetros Generales y Signos Vitales", expanded=True):
+        edad = st.number_input("Edad del paciente (años):", min_value=1, max_value=110, value=25)
+        temperatura = st.slider("Temperatura corporal (°C):", min_value=35.0, max_value=41.0, value=38.4, step=0.1)
+        pas = st.number_input("Presión Arterial Sistólica (mmHg):", min_value=50, max_value=200, value=110)
 
-st.subheader("⚠️ 1. Signos de Alarma (Red Flags)")
-col1, col2 = st.columns(2)
-with col1:
-    furia_inicio = st.checkbox("Inicio explosivo o súbito (Dolor en estallido)")
-    fiebre_rigidez = st.checkbox("Fiebre con rigidez de nuca / alteración de conciencia")
-with col2:
-    deficit_neurologico = st.checkbox("Pérdida de fuerza, visión doble o dificultad para hablar")
-    trauma = st.checkbox("Aparición tras traumatismo craneal reciente")
+    with st.expander("🚨 2. Evaluador de Signos de Alarma (Red Flags)", expanded=True):
+        rigidez_nuca = st.checkbox("Rigidez de nuca / Dificultad para doblar el cuello hacia el pecho")
+        alteracion_conciencia = st.checkbox("Confusión, desorientación o somnolencia extrema")
+        petequias = st.checkbox("Puntos o manchas rojas/moradas en la piel (Petequias)")
+        dificultad_respirar = st.checkbox("Dificultad respiratoria severa o dolor torácico")
 
-st.subheader("🧠 2. Características e Intensidad del Dolor")
-intensidad = st.select_slider("Intensidad del dolor (1-10):", options=list(range(1, 11)), value=5)
-ubicacion = st.radio("Ubicación del dolor:", ["Unilateral (Un solo lado)", "Bilateral (Ambos lados / En banda)", "Orbital (Alrededor de un ojo)"])
-tipo_dolor = st.radio("Tipo de pulsación/sensación:", ["Pulsátil (Latido)", "Opresivo (Cinta que aprieta)", "Taladrante / Punzante intenso"])
+    with st.expander("🧠 3. Caracterización de Cefalea y Síntomas Acompañantes", expanded=True):
+        intensidad_dolor = st.select_slider("Intensidad del dolor de cabeza (1 al 10):", options=list(range(1, 11)), value=7)
+        ubicacion_dolor = st.selectbox("Localización/Tipo de Dolor:", [
+            "Retroocular (Detrás o alrededor de los ojos)",
+            "Pulsátil (Latidos en un lado o toda la cabeza)",
+            "Opresivo / Difuso generalizado",
+            "Sin dolor de cabeza significativo"
+        ])
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            dolor_muscular = st.checkbox("Dolores musculares o articulares intensos (Mialgias)")
+            nauseas = st.checkbox("Náuseas o vómitos recurrentes")
+        with c2:
+            sintomas_respiratorios = st.checkbox("Tos, dolor de garganta o congestión nasal")
+            fotofobia = st.checkbox("Sensibilidad molesta a la luz (Fotofobia)")
 
-st.subheader("👁️ 3. Síntomas Acompañantes")
-col3, col4 = st.columns(2)
-with col3:
-    nauseas = st.checkbox("Náuseas o vómitos")
-    fotofobia = st.checkbox("Miedo o molestia a la luz (Fotofobia) y sonido (Fonofobia)")
-with col4:
-    lagrimeo_ojo = st.checkbox("Lagrimeo o enrojecimiento del ojo en el lado del dolor")
-    aura = st.checkbox("Aura visual (destellos, luces o líneas antes del dolor)")
-
+# Motor de Inferencia (Base de Reglas IF-THEN)
 def motor_inferencia():
-    if furia_inicio or fiebre_rigidez or deficit_neurologico or trauma:
+    tiene_fiebre = temperatura >= 38.0
+    hipotension = pas < 90
+
+    # REGLA 0: Emergencia Infectológica / Meningitis o Sepsis
+    if rigidez_nuca or alteracion_conciencia or petequias or dificultad_respirar or hipotension:
         return {
-            "diagnostico": "Urgencia Neurológica / Posible Cefalea Secundaria",
-            "nivel": "CRÍTICO - ATENCIÓN INMEDIATA",
-            "explicacion": "Se identificaron signos de alarma clínicos que requieren descarte inmediato de patología intracraneal o infecciosa.",
-            "recomendacion": "Diríjase de inmediato a un centro de urgencias o guardia médica.",
+            "diagnostico": "Urgencia Infectológica: Posible Meningitis, Neuroinfección o Sepsis",
+            "triaje": "NIVEL CRÍTICO - ATENCIÓN INMEDIATA EN URGENCIAS",
+            "justificacion": "Presencia de signos de alarma neurológicos o sistémicos que requieren descarte inmediato de infección grave del sistema nervioso central.",
+            "plan": [
+                "Traslado inmediato al servicio de emergencias hospitalario.",
+                "Evaluación prioritaria para punción lumbar y cultivos.",
+                "Evitar la administración de alimentos o medicamentos por vía oral si hay confusión."
+            ],
+            "alerta": "⚠️ Riesgo de deterioro neurológico o shock infeccioso.",
             "color": "error"
         }
-    
-    if (ubicacion == "Unilateral (Un solo lado)" or aura) and (tipo_dolor == "Pulsátil (Latido)") and (nauseas or fotofobia) and intensidad >= 6:
-        tipo = "Migraña con Aura" if aura else "Migraña sin Aura"
+
+    # REGLA 1: Dengue / Arbovirosis Tropical
+    if tiene_fiebre and ubicacion_dolor == "Retroocular (Detrás o alrededor de los ojos)" and dolor_muscular:
         return {
-            "diagnostico": f"Cuadro compatible con {tipo}",
-            "nivel": "NIVEL 1 - MODERADO A ALTO",
-            "explicacion": "Cumple los criterios con dolor unilateral, pulsátil, de moderada a alta intensidad, asociado a síntomas vegetativos/sensoriales.",
-            "recomendacion": "Consulta con Neurología o Medicina General para indicación de triptanes o antimigrañosos específicos.",
+            "diagnostico": "Cuadro Compatible con Dengue u otra Arbovirosis Tropical",
+            "triaje": "NIVEL 1 - PRIORIDAD MÉDICA Y LABORATORIO",
+            "justificacion": "Tríada infecciosa clásica: Fiebre alta, dolor retroocular y mialgias/artralgias intensas.",
+            "plan": [
+                "Solicitar Hemograma completo (conteo de plaquetas y hematocrito) y prueba antígeno NS1 / Serología.",
+                "Hidratación oral abundante con suero oral (2 a 3 litros al día).",
+                "Vigilar la aparición de signos de alarma de Dengue grave (sangrado de encías, dolor abdominal severo)."
+            ],
+            "alerta": "🚫 CONTRAINDICACIÓN: NO administrar Ibuprofeno, Aspirina ni AINEs por riesgo de hemorragia.",
             "color": "warning"
         }
 
-    if ubicacion == "Orbital (Alrededor de un ojo)" and tipo_dolor == "Taladrante / Punzante intenso" and lagrimeo_ojo and intensidad >= 8:
+    # REGLA 2: Infección Respiratoria Aguda Febril
+    if tiene_fiebre and sintomas_respiratorios:
         return {
-            "diagnostico": "Cuadro compatible con Cefalea en Brotes (Trigémino-Autonómica)",
-            "nivel": "NIVEL 1 - ALTO (Dolor Severo)",
-            "explicacion": "Presenta localización periorbitaria muy severa con síntomas autonómicos craneales unilaterales (lagrimeo/enrojecimiento).",
-            "recomendacion": "Evaluación prioritaria por Neurología. El tratamiento agudo suele requerir oxigenoterapia e inyectables específicos.",
-            "color": "warning"
-        }
-
-    if ubicacion == "Bilateral (Ambos lados / En banda)" and tipo_dolor == "Opresivo (Cinta que aprieta)" and not nauseas and intensidad <= 6:
-        return {
-            "diagnostico": "Cuadro compatible con Cefalea Tensional",
-            "nivel": "NIVEL 2 - LEVE / MODERADO",
-            "explicacion": "Dolor de carácter opresivo holocraneal o en banda, de intensidad leve a moderada, sin náuseas ni agravación intensa.",
-            "recomendacion": "Manejo inicial con analgésicos comunes, control de estrés, hidratación y corrección postural.",
+            "diagnostico": "Infección Respiratoria Aguda Febril / Síndrome Gripal",
+            "triaje": "NIVEL 2 - CONSULTA AMBULATORIA",
+            "justificacion": "Cuadro febril focalizado en vías respiratorias superiores (tos, inflamación de garganta).",
+            "plan": [
+                "Reposo y aislamiento respiratorio preventivo en el hogar.",
+                "Uso de antitérmicos habituales bajo indicación médica (ej. Paracetamol).",
+                "Hidratación abundante y uso de mascarilla."
+            ],
+            "alerta": "Consultar a un médico si la fiebre persiste más de 72 horas o si aparece dificultad respiratoria.",
             "color": "info"
         }
 
+    # REGLA 3: Cefalea Primaria (Migraña / Sin Fiebre)
+    if not tiene_fiebre and (ubicacion_dolor == "Pulsátil (Latidos en un lado o toda la cabeza)" or fotofobia) and intensidad_dolor >= 6:
+        return {
+            "diagnostico": "Cuadro Sugerente de Migraña / Cefalea Primaria",
+            "triaje": "NIVEL 2 - ATENCIÓN AMBULATORIA",
+            "justificacion": "Cefalea pulsátil e intensa con fotofobia en ausencia de síndrome febril activo.",
+            "plan": [
+                "Descanso en ambiente oscuro y libre de ruidos.",
+                "Uso de analgésicos o triptanes indicados por medicina general/neurología."
+            ],
+            "alerta": "Acuda a urgencias si el dolor inicia bruscamente como un 'estallido'.",
+            "color": "info"
+        }
+
+    # REGLA 4: Síndrome Febril Inespecífico
+    if tiene_fiebre:
+        return {
+            "diagnostico": "Síndrome Febril Agudo en Estudio",
+            "triaje": "NIVEL 2 - OBSERVACIÓN",
+            "justificacion": "Fiebre comprobada sin un foco infeccioso localizable de forma inmediata.",
+            "plan": [
+                "Llevar control escrito de la temperatura cada 4 horas.",
+                "Mantener hidratación constante y consultar a un centro de salud si la fiebre persiste."
+            ],
+            "alerta": "Consultar si la temperatura supera los 38.5°C.",
+            "color": "success"
+        }
+
+    # REGLA 5: Evaluación Normal
     return {
-        "diagnostico": "Cefalea Inespecífica / No Clasificada",
-        "nivel": "NIVEL 3 - EVALUACIÓN GENERAL",
-        "explicacion": "Los síntomas reportados no cumplen strictly el patrón clásico de una cefalea primaria específica.",
-        "recomendacion": "Llevar un diario de dolor de cabeza y consultar con un médico de atención primaria.",
+        "diagnostico": "Sin Criterios de Afección Aguda Febril o Cefalea Severa",
+        "triaje": "NIVEL 3 - CONTROL GENERAL",
+        "justificacion": "Los parámetros registrados no sobrepasan los umbrales de las reglas clínicas del sistema.",
+        "plan": [
+            "Mantener hábitos saludables e hidratación adecuada.",
+            "Evitar la automedicación."
+        ],
+        "alerta": "Si los síntomas varían o empeoran, realice una nueva evaluación.",
         "color": "success"
     }
 
-st.markdown("---")
-if st.button("🚀 Ejecutar Diagnóstico del Sistema Experto", use_container_width=True):
+# Despliegue de Resultados del Diagnóstico
+with col_salidas:
+    st.header("📊 Dictamen del Sistema Experto")
+    
     res = motor_inferencia()
     
-    st.subheader("📊 Resultado de la Inferencia")
-    
     if res["color"] == "error":
-        st.error(f"**Prioridad:** {res['nivel']}")
+        st.error(f"### 🛑 {res['diagnostico']}\n**Triaje:** {res['triaje']}")
     elif res["color"] == "warning":
-        st.warning(f"**Prioridad:** {res['nivel']}")
+        st.warning(f"### ⚠️ {res['diagnostico']}\n**Triaje:** {res['triaje']}")
     elif res["color"] == "info":
-        st.info(f"**Prioridad:** {res['nivel']}")
+        st.info(f"### ℹ️ {res['diagnostico']}\n**Triaje:** {res['triaje']}")
     else:
-        st.success(f"**Prioridad:** {res['nivel']}")
-        
-    st.markdown(f"**Diagnóstico Sugerido:** {res['diagnostico']}")
-    st.markdown(f"**Explicación del Sistema:** {res['explicacion']}")
-    st.markdown(f"**Recomendación:** {res['recomendacion']}")
+        st.success(f"### ✅ {res['diagnostico']}\n**Triaje:** {res['triaje']}")
 
-st.caption("Nota: Este sistema experto es una herramienta de soporte de decisiones orientativo y no reemplaza la evaluación clínica profesional.")
+    st.markdown("---")
+    st.markdown(f"**Fundamentación de la Inferencia:**\n{res['justificacion']}")
+    
+    st.markdown("---")
+    st.subheader("💡 Plan de Acción e Indicaciones")
+    for i, paso in enumerate(res["plan"], 1):
+        st.markdown(f"**{i}.** {paso}")
+        
+    st.markdown("---")
+    st.write(f"**Indicación de Seguridad:** {res['alerta']}")
+
+st.markdown("---")
+st.caption("Nota: Sistema Experto de Soporte a Decisiones Médicas (DSS) para la especialidad de Infectología. No sustituye la evaluación profesional.")
