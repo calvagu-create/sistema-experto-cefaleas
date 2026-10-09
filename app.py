@@ -1,167 +1,209 @@
 import streamlit as st
+from datetime import datetime
 
-# Configuración inicial del entorno
+# Configuración de la clínica virtual
 st.set_page_config(
-    page_title="SE Infectología: Fiebre y Cefalea", 
+    page_title="Consulta Médica Virtual - Infectología", 
     page_icon="🩺", 
     layout="wide"
 )
 
-# Encabezado con la delimitación de la especialidad
-st.title("🩺 Sistema Experto de Triaje e Infecciones Agudas")
-st.markdown("**Especialidad Delimitada:** Infectología y Medicina Tropical")
-st.caption("Evaluación clínica rápida de Síndrome Febril Agudo y Cefaleas Infecciosas mediante motor de inferencia.")
+# Estilo CSS para dar formato de Boleta / Receta Médica
+st.markdown("""
+<style>
+    .boleta-container {
+        border: 2px solid #2e6f40;
+        background-color: #f9fbf9;
+        padding: 25px;
+        border-radius: 10px;
+        font-family: 'Courier New', Courier, monospace;
+        color: #1a1a1a;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .boleta-header {
+        text-align: center;
+        border-bottom: 2px dashed #2e6f40;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .boleta-seccion {
+        margin-top: 15px;
+        border-bottom: 1px dashed #ccc;
+        padding-bottom: 10px;
+    }
+    .boleta-titulo {
+        font-weight: bold;
+        color: #1b4d2e;
+        text-transform: uppercase;
+    }
+    .urgencia-critica {
+        border: 2px solid #b30000;
+        background-color: #fff2f2;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("🩺 Centro Médico Virtual: Consulta Infectológica")
+st.caption("Atención del Médico Especialista en Infectología y Medicina Tropical")
 st.markdown("---")
 
-col_entradas, col_salidas = st.columns([1, 1], gap="large")
+col_form, col_receta = st.columns([1, 1.2], gap="large")
 
-with col_entradas:
-    st.header("📋 Entrada de Datos y Síntomas Clínicos")
+with col_form:
+    st.header("📝 Ficha Clinica del Paciente")
     
-    with st.expander("👤 1. Parámetros Generales y Signos Vitales", expanded=True):
-        edad = st.number_input("Edad del paciente (años):", min_value=1, max_value=110, value=25)
+    # Datos Filiatorios
+    with st.expander("👤 1. Datos Personales y Signos Vitales", expanded=True):
+        nombre = st.text_input("Nombre completo del paciente:", value="Juan Pérez")
+        edad = st.number_input("Edad:", min_value=1, max_value=110, value=30)
+        genero = st.selectbox("Género:", ["Masculino", "Femenino", "Otro"])
         temperatura = st.slider("Temperatura corporal (°C):", min_value=35.0, max_value=41.0, value=38.4, step=0.1)
         pas = st.number_input("Presión Arterial Sistólica (mmHg):", min_value=50, max_value=200, value=110)
 
-    with st.expander("🚨 2. Evaluador de Signos de Alarma (Red Flags)", expanded=True):
-        rigidez_nuca = st.checkbox("Rigidez de nuca / Dificultad para doblar el cuello hacia el pecho")
-        alteracion_conciencia = st.checkbox("Confusión, desorientación o somnolencia extrema")
-        petequias = st.checkbox("Puntos o manchas rojas/moradas en la piel (Petequias)")
-        dificultad_respirar = st.checkbox("Dificultad respiratoria severa o dolor torácico")
+    # Evaluación de Alarma
+    with st.expander("🚨 2. ¿Presenta alguno de estos signos graves?", expanded=True):
+        rigidez_nuca = st.checkbox("Dificultad para doblar el cuello hacia el pecho")
+        alteracion_conciencia = st.checkbox("Confusión, desorientación o somnolencia marcada")
+        petequias = st.checkbox("Manchas o puntos morados/rojos en la piel")
+        dificultad_respirar = st.checkbox("Dificultad severa para respirar")
 
-    with st.expander("🧠 3. Caracterización de Cefalea y Síntomas Acompañantes", expanded=True):
-        intensidad_dolor = st.select_slider("Intensidad del dolor de cabeza (1 al 10):", options=list(range(1, 11)), value=7)
-        ubicacion_dolor = st.selectbox("Localización/Tipo de Dolor:", [
-            "Retroocular (Detrás o alrededor de los ojos)",
+    # Sintomatología Principal
+    with st.expander("🤒 3. Detalle de los Síntomas", expanded=True):
+        intensidad_dolor = st.select_slider("Intensidad del dolor de cabeza (1-10):", options=list(range(1, 11)), value=7)
+        tipo_dolor = st.selectbox("Localización principal del dolor:", [
+            "Retroocular (Detrás de los ojos)",
             "Pulsátil (Latidos en un lado o toda la cabeza)",
-            "Opresivo / Difuso generalizado",
+            "Opresivo (Sensación de casco/banda que aprieta)",
             "Sin dolor de cabeza significativo"
         ])
         
         c1, c2 = st.columns(2)
         with c1:
-            dolor_muscular = st.checkbox("Dolores musculares o articulares intensos (Mialgias)")
-            nauseas = st.checkbox("Náuseas o vómitos recurrentes")
+            dolor_muscular = st.checkbox("Dolor muscular / articular intenso")
+            nauseas = st.checkbox("Náuseas o vómitos")
         with c2:
-            sintomas_respiratorios = st.checkbox("Tos, dolor de garganta o congestión nasal")
-            fotofobia = st.checkbox("Sensibilidad molesta a la luz (Fotofobia)")
+            sintomas_respiratorios = st.checkbox("Tos, dolor de garganta o congestión")
+            fotofobia = st.checkbox("Molestia intensa a la luz")
 
-# Motor de Inferencia (Base de Reglas IF-THEN)
-def motor_inferencia():
+# Lógica Médica de Diagnóstico
+def diagnostico_doctor():
     tiene_fiebre = temperatura >= 38.0
     hipotension = pas < 90
 
-    # REGLA 0: Emergencia Infectológica / Meningitis o Sepsis
+    # Diagnóstico 1: Urgencia Neurológica o Infectológica Grave
     if rigidez_nuca or alteracion_conciencia or petequias or dificultad_respirar or hipotension:
         return {
-            "diagnostico": "Urgencia Infectológica: Posible Meningitis, Neuroinfección o Sepsis",
-            "triaje": "NIVEL CRÍTICO - ATENCIÓN INMEDIATA EN URGENCIAS",
-            "justificacion": "Presencia de signos de alarma neurológicos o sistémicos que requieren descarte inmediato de infección grave del sistema nervioso central.",
-            "plan": [
-                "Traslado inmediato al servicio de emergencias hospitalario.",
-                "Evaluación prioritaria para punción lumbar y cultivos.",
-                "Evitar la administración de alimentos o medicamentos por vía oral si hay confusión."
-            ],
-            "alerta": "⚠️ Riesgo de deterioro neurológico o shock infeccioso.",
-            "color": "error"
+            "diagnostico_medico": "MENINGITIS ACUDA / SEPSIS / NEUROINFECCIÓN GRAVE",
+            "tipo_gravedad": "CRÍTICA - ATENCIÓN EN EMERGENCIAS",
+            "analisis": "El paciente presenta signos de irritación meníngea o falla hemodinámica sistémica. Se requiere descartar infección bacteriana o viral del SNC.",
+            "trata_farmaco": "NO ADMINISTRAR MEDICACIÓN ORAL EN CASA. Requiere antibióticos/antivirales endovenosos intrahospitalarios.",
+            "conducta": "Derivación inmediata en ambulancia a guardia de emergencias. Punción lumbar y analítica de sangre urgente.",
+            "es_critico": True
         }
 
-    # REGLA 1: Dengue / Arbovirosis Tropical
-    if tiene_fiebre and ubicacion_dolor == "Retroocular (Detrás o alrededor de los ojos)" and dolor_muscular:
+    # Diagnóstico 2: Dengue u Arbovirosis
+    if tiene_fiebre and tipo_dolor == "Retroocular (Detrás de los ojos)" and dolor_muscular:
         return {
-            "diagnostico": "Cuadro Compatible con Dengue u otra Arbovirosis Tropical",
-            "triaje": "NIVEL 1 - PRIORIDAD MÉDICA Y LABORATORIO",
-            "justificacion": "Tríada infecciosa clásica: Fiebre alta, dolor retroocular y mialgias/artralgias intensas.",
-            "plan": [
-                "Solicitar Hemograma completo (conteo de plaquetas y hematocrito) y prueba antígeno NS1 / Serología.",
-                "Hidratación oral abundante con suero oral (2 a 3 litros al día).",
-                "Vigilar la aparición de signos de alarma de Dengue grave (sangrado de encías, dolor abdominal severo)."
-            ],
-            "alerta": "🚫 CONTRAINDICACIÓN: NO administrar Ibuprofeno, Aspirina ni AINEs por riesgo de hemorragia.",
-            "color": "warning"
+            "diagnostico_medico": "SÍNDROME FEBRIL COMPATIBLE CON DENGUE (ARBOVIROSIS)",
+            "tipo_gravedad": "PRIORITARIO - REQUERE MONITOREO",
+            "analisis": "Presenta el cuadro clínico clásico de arbovirosis: Fiebre, mialgias intensas y dolor retroocular característico.",
+            "trata_farmaco": "• Paracetamol 500mg - 1 tableta c/6 horas si hay fiebre o dolor (Máx 3g/día).\n• 🚫 CONTRAINDICADO: Ibuprofeno, Aspirina, Naproxeno (Riesgo de hemorragia).",
+            "conducta": "• Hidratación oral estricta: 2.5 a 3 Litros de suero oral/agua al día.\n• Reposo absoluto en cama.\n• Solicitar Hemograma completo (Plaquetas) y prueba NS1.",
+            "es_critico": False
         }
 
-    # REGLA 2: Infección Respiratoria Aguda Febril
+    # Diagnóstico 3: Cuadro Respiratorio Gripal Febril
     if tiene_fiebre and sintomas_respiratorios:
         return {
-            "diagnostico": "Infección Respiratoria Aguda Febril / Síndrome Gripal",
-            "triaje": "NIVEL 2 - CONSULTA AMBULATORIA",
-            "justificacion": "Cuadro febril focalizado en vías respiratorias superiores (tos, inflamación de garganta).",
-            "plan": [
-                "Reposo y aislamiento respiratorio preventivo en el hogar.",
-                "Uso de antitérmicos habituales bajo indicación médica (ej. Paracetamol).",
-                "Hidratación abundante y uso de mascarilla."
-            ],
-            "alerta": "Consultar a un médico si la fiebre persiste más de 72 horas o si aparece dificultad respiratoria.",
-            "color": "info"
+            "diagnostico_medico": "INFECCIÓN AGUDA DE VÍAS RESPIRATORIAS / SÍNDROME GRIPAL",
+            "tipo_gravedad": "MODERADO - MANEJO AMBULATORIO",
+            "analisis": "Proceso infeccioso de vías aéreas superiores con respuesta febril activa.",
+            "trata_farmaco": "• Paracetamol 500mg cada 8 horas según temperatura.\n• Lavados nasales con solución salina.",
+            "conducta": "• Reposo en domicilio por 48-72 horas con aislamiento preventivo.\n• Abundante ingesta de líquidos tibios.\n• Usar mascarilla si convive con otras personas.",
+            "es_critico": False
         }
 
-    # REGLA 3: Cefalea Primaria (Migraña / Sin Fiebre)
-    if not tiene_fiebre and (ubicacion_dolor == "Pulsátil (Latidos en un lado o toda la cabeza)" or fotofobia) and intensidad_dolor >= 6:
+    # Diagnóstico 4: Migraña o Cefalea Primaria
+    if not tiene_fiebre and (tipo_dolor == "Pulsátil (Latidos en un lado o toda la cabeza)" or fotofobia) and intensidad_dolor >= 6:
         return {
-            "diagnostico": "Cuadro Sugerente de Migraña / Cefalea Primaria",
-            "triaje": "NIVEL 2 - ATENCIÓN AMBULATORIA",
-            "justificacion": "Cefalea pulsátil e intensa con fotofobia en ausencia de síndrome febril activo.",
-            "plan": [
-                "Descanso en ambiente oscuro y libre de ruidos.",
-                "Uso de analgésicos o triptanes indicados por medicina general/neurología."
-            ],
-            "alerta": "Acuda a urgencias si el dolor inicia bruscamente como un 'estallido'.",
-            "color": "info"
+            "diagnostico_medico": "MIGRAÑA AGUDA / CEFALEA PRIMARIA",
+            "tipo_gravedad": "AMBULATORIO",
+            "analisis": "Episodio de cefalea vascular pulsátil de intensidad moderada-alta con fotosensibilidad, sin signo infeccioso febril.",
+            "trata_farmaco": "• Analgésicos/Antimigrañosos indicados por su médico tratante.\n• Evitar automedicarse en exceso.",
+            "conducta": "• Reposo en habitación a oscuras y en silencio.\n• Colocar compresa fría en la frente.",
+            "es_critico": False
         }
 
-    # REGLA 4: Síndrome Febril Inespecífico
+    # Diagnóstico 5: Fiebre Inespecífica
     if tiene_fiebre:
         return {
-            "diagnostico": "Síndrome Febril Agudo en Estudio",
-            "triaje": "NIVEL 2 - OBSERVACIÓN",
-            "justificacion": "Fiebre comprobada sin un foco infeccioso localizable de forma inmediata.",
-            "plan": [
-                "Llevar control escrito de la temperatura cada 4 horas.",
-                "Mantener hidratación constante y consultar a un centro de salud si la fiebre persiste."
-            ],
-            "alerta": "Consultar si la temperatura supera los 38.5°C.",
-            "color": "success"
+            "diagnostico_medico": "SÍNDROME FEBRIL EN ESTUDIO",
+            "tipo_gravedad": "OBSERVACIÓN",
+            "analisis": "Elevación de la temperatura corporal sin foco infeccioso evidente en el interrogatorio inicial.",
+            "trata_farmaco": "• Paracetamol 500mg si la temperatura supera los 38.0°C.",
+            "conducta": "• Controlar y anotar la temperatura cada 4 horas.\n• Mantenerse bien hidratado.\n• Consultar a un médico presencial si la fiebre no cede en 48 horas.",
+            "es_critico": False
         }
 
-    # REGLA 5: Evaluación Normal
+    # Diagnóstico 6: Sin hallazgos
     return {
-        "diagnostico": "Sin Criterios de Afección Aguda Febril o Cefalea Severa",
-        "triaje": "NIVEL 3 - CONTROL GENERAL",
-        "justificacion": "Los parámetros registrados no sobrepasan los umbrales de las reglas clínicas del sistema.",
-        "plan": [
-            "Mantener hábitos saludables e hidratación adecuada.",
-            "Evitar la automedicación."
-        ],
-        "alerta": "Si los síntomas varían o empeoran, realice una nueva evaluación.",
-        "color": "success"
+        "diagnostico_medico": "EVALUACIÓN SIN HALLAZGOS PATOLÓGICOS AGUDOS",
+        "tipo_gravedad": "NORMAL",
+        "analisis": "No se identifican criterios de síndrome febril agudo ni cefaleas de riesgo en este momento.",
+        "trata_farmaco": "• Sin indicación farmacológica por el momento.",
+        "conducta": "• Mantener buena hidratación y hábitos saludables.\n• Si los síntomas cambian, consulte nuevamente.",
+        "es_critico": False
     }
 
-# Despliegue de Resultados del Diagnóstico
-with col_salidas:
-    st.header("📊 Dictamen del Sistema Experto")
+# Generación de la Boleta / Receta Médica
+with col_receta:
+    st.header("📋 Boleta de Atención y Receta Médica")
     
-    res = motor_inferencia()
-    
-    if res["color"] == "error":
-        st.error(f"### 🛑 {res['diagnostico']}\n**Triaje:** {res['triaje']}")
-    elif res["color"] == "warning":
-        st.warning(f"### ⚠️ {res['diagnostico']}\n**Triaje:** {res['triaje']}")
-    elif res["color"] == "info":
-        st.info(f"### ℹ️ {res['diagnostico']}\n**Triaje:** {res['triaje']}")
-    else:
-        st.success(f"### ✅ {res['diagnostico']}\n**Triaje:** {res['triaje']}")
+    med = diagnostico_doctor()
+    fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M")
 
-    st.markdown("---")
-    st.markdown(f"**Fundamentación de la Inferencia:**\n{res['justificacion']}")
-    
-    st.markdown("---")
-    st.subheader("💡 Plan de Acción e Indicaciones")
-    for i, paso in enumerate(res["plan"], 1):
-        st.markdown(f"**{i}.** {paso}")
+    clase_boleta = "boleta-container urgencia-critica" if med["es_critico"] else "boleta-container"
+
+    # HTML de la Boleta / Ficha
+    st.markdown(f"""
+    <div class="{clase_boleta}">
+        <div class="boleta-header">
+            <h3>🏥 CENTRO MÉDICO DE INFECTOLOGÍA</h3>
+            <p><strong>FICHA DE ATENCIÓN Y RECETA MÉDICA</strong></p>
+            <p>Fecha de emisión: {fecha_actual}</p>
+        </div>
         
-    st.markdown("---")
-    st.write(f"**Indicación de Seguridad:** {res['alerta']}")
+        <div>
+            <p><strong>PACIENTE:</strong> {nombre.upper()}</p>
+            <p><strong>EDAD / GÉNERO:</strong> {edad} años | {genero}</p>
+            <p><strong>SIGNOS VITALES:</strong> Temp: {temperatura}°C | PA: {pas} mmHg</p>
+        </div>
+        
+        <div class="boleta-seccion">
+            <p class="boleta-titulo">📌 EVALUACIÓN Y DIAGNÓSTICO MÉDICO:</p>
+            <p><strong>{med['diagnostico_medico']}</strong></p>
+            <p><em>Nivel de Atención: {med['tipo_gravedad']}</em></p>
+            <p><strong>Análisis Clínico:</strong> {med['analisis']}</p>
+        </div>
+        
+        <div class="boleta-seccion">
+            <p class="boleta-titulo">💊 PRESCRIPCIÓN / TRATAMIENTO RECOMENDADO:</p>
+            <p>{med['trata_farmaco'].replace('\n', '<br>')}</p>
+        </div>
+        
+        <div class="boleta-seccion">
+            <p class="boleta-titulo">📝 INDICACIONES Y CONDUCTA A SEGUIR:</p>
+            <p>{med['conducta'].replace('\n', '<br>')}</p>
+        </div>
+        
+        <br>
+        <div style="text-align: center; margin-top: 20px;">
+            <p>_____________________________________</p>
+            <p><strong>Dra. / Dr. Especialista en Infectología</strong></p>
+            <p><small>Colegio Médico / Firma Digital de Consulta Virtual</small></p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.markdown("---")
-st.caption("Nota: Sistema Experto de Soporte a Decisiones Médicas (DSS) para la especialidad de Infectología. No sustituye la evaluación profesional.")
+st.caption("Aviso legal: Esta boleta médica virtual es una simulación orientativa generada para fines académicos. No sustituye una consulta médica o receta emitida en un establecimiento de salud presencial.")
